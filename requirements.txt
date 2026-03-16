@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+langchain-community
+langchain-google-genai
+langchain-huggingface
+langchain-pinecone
+pinecone-client
+pypdf
+python-dotenv
+langchain
+pydantic
+aiofiles
+sqlalchemy
+psycopg2-binary
+sentence-transformers
+httpx

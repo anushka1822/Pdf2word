@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --accent-primary: #1a73e8;
+    --accent-secondary: #8b5cf6;
+    --sidebar-bg: #ffffff;
+    --workspace-bg: #f8f9fa;
+    --border-color: #e8eaed;
+    --text-main: #202124;
+    --text-muted: #5f6368;
+    
+    /* Column Widths */
+    --sources-width: 280px;
+    --studio-width: 320px;
+  }
+
+  body {
+    @apply antialiased bg-[#f8f9fa] text-gray-900 overflow-hidden;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, .font-heading {
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer components {
+  .column-border {
+    @apply border-gray-200/60 transition-colors duration-300;
+  }
+
+  .blueprint-card {
+    @apply bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300;
+  }
+
+  .sources-sidebar {
+    @apply bg-white border-r border-gray-200 flex flex-col h-full z-20;
+    width: var(--sources-width);
+  }
+
+  .studio-sidebar {
+    @apply bg-white border-l border-gray-200 flex flex-col h-full z-20;
+    width: var(--studio-width);
+  }
+
+  .premium-gradient {
+    @apply bg-gradient-to-tr from-indigo-600 via-violet-600 to-purple-600;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 rounded-full hover:bg-gray-300 transition-colors;
+  }
+}
+
+/* Blueprint Page Aesthetic */
+.blueprint-page {
+  @apply max-w-4xl w-full mx-auto my-6 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.24)] rounded-xl flex flex-col overflow-hidden border border-gray-200;
+}
+
+/* Animations */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
