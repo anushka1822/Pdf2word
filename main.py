@@ -100,7 +100,7 @@ async def health_check():
     return {"status": "healthy"}
 
 # Configuration Constants
-EMBEDDING_MODEL_NAME = "models/text-embedding-004" # Cloud-based, low RAM usage
+EMBEDDING_MODEL_NAME = "models/gemini-embedding-001" # Verified 3072-dim model
 GEMINI_MODEL_NAME = "models/gemma-3-27b-it"
 PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "pdf2word")
 

@@ -28,7 +28,7 @@ This guide explains how to deploy the PDF2Word application using **Render** for 
 1. Create a free account at [Pinecone.io](https://www.pinecone.io/).
 2. Create an index with:
    - **Name**: `pdf2word` (or any name, just match your env var).
-   - **Dimension**: `768` (to match the `text-embedding-004` cloud model).
+   - **Dimension**: `3072` (to match the `gemini-embedding-001` cloud model).
    - **Metric**: `cosine`.
 
 ---

@@ -1,0 +1,2 @@
+models/gemini-embedding-001: 3072
+models/gemini-embedding-2-preview: 3072

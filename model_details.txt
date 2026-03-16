@@ -1,0 +1,2 @@
+Model: models/gemini-embedding-001
+Dimension: 3072
