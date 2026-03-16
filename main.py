@@ -100,12 +100,13 @@ async def health_check():
     return {"status": "healthy"}
 
 # Configuration Constants
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL_NAME = "models/text-embedding-004" # Cloud-based, low RAM usage
 GEMINI_MODEL_NAME = "models/gemma-3-27b-it"
 PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "pdf2word")
 
-# Initialize Embeddings
-embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
+# Initialize Cloud Embeddings (Zero RAM usage on Render)
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+embeddings = GoogleGenerativeAIEmbeddings(model=EMBEDDING_MODEL_NAME)
 
 # Initialize LLM
 llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL_NAME, temperature=0.3)
