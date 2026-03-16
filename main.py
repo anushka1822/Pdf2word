@@ -106,7 +106,18 @@ PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "pdf2word")
 
 # Initialize Cloud Embeddings (Zero RAM usage on Render)
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-embeddings = GoogleGenerativeAIEmbeddings(model=EMBEDDING_MODEL_NAME)
+import google.generativeai as genai
+
+# We use a wrapper to force 768 dimensions because Pinecone's limit is 2048
+# but the Gemini model defaults to 3072.
+class DimWrapper(GoogleGenerativeAIEmbeddings):
+    def embed_documents(self, texts):
+        # The embedding model supports flexible dimensions (MRL)
+        return super().embed_documents(texts, output_dimensionality=768)
+    def embed_query(self, text):
+        return super().embed_query(text, output_dimensionality=768)
+
+embeddings = DimWrapper(model=EMBEDDING_MODEL_NAME)
 
 # Initialize LLM
 llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL_NAME, temperature=0.3)
