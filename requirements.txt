@@ -12,3 +12,4 @@ aiofiles
 sqlalchemy
 psycopg2-binary
 httpx
+google-generativeai
