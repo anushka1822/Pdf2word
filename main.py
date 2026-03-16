@@ -105,7 +105,6 @@ PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "pdf2word")
 
 # Initialize Cloud Embeddings (Zero RAM usage on Render)
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-import google.generativeai as genai
 
 # We use a wrapper to force 768 dimensions because Pinecone's limit is 2048
 # but the Gemini model defaults to 3072.
