@@ -201,9 +201,10 @@ async def get_documents(db: Session = Depends(get_db)):
         # Fallback to empty list or handle error
         return {"documents": []}
 
-@app.delete("/documents/{filename}")
+@app.post("/documents/delete/{filename}")
 async def delete_document(filename: str, db: Session = Depends(get_db)):
     try:
+        logger.info(f"POST request received to delete document: {filename}")
         vectorstore = get_vectorstore()
         # Pinecone allows deletion by metadata filter
         vectorstore.delete(filter={"source_name": filename})
@@ -214,6 +215,9 @@ async def delete_document(filename: str, db: Session = Depends(get_db)):
             if db_doc:
                 db.delete(db_doc)
                 db.commit()
+                logger.info(f"Successfully deleted {filename} from DB and Pinecone.")
+            else:
+                logger.warning(f"Document {filename} not found in DB.")
                 
         return {"status": "success", "message": f"Deleted {filename} and its associated vector data."}
             
@@ -515,15 +519,17 @@ async def get_chat_history(db: Session = Depends(get_db)):
         logger.error(f"Error fetching chat history: {e}")
         return {"history": []}
 
-@app.delete("/chat/clear")
+@app.post("/chat/clear")
 async def delete_chat_history(db: Session = Depends(get_db)):
     try:
+        logger.info("POST request received to clear chat history.")
         if not engine:
             raise HTTPException(status_code=500, detail="Database engine not initialized.")
         
         # Clear all messages from the database
         db.query(DBChatMessage).delete()
         db.commit()
+        logger.info("Chat history cleared successfully in DB.")
         return {"status": "success", "message": "Chat history cleared successfully."}
     except Exception as e:
         logger.error(f"Error clearing chat history: {e}")

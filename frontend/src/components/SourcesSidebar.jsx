@@ -64,8 +64,8 @@ const SourcesSidebar = ({ isLoading, setIsLoading, uploadedDocs, setUploadedDocs
 
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/documents/${encodeURIComponent(docName)}`, {
-                method: 'DELETE',
+            const response = await fetch(`${API_BASE_URL}/documents/delete/${encodeURIComponent(docName)}`, {
+                method: 'POST',
             });
             if (!response.ok) throw new Error('Delete failed');
             

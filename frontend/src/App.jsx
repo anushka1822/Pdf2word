@@ -54,7 +54,7 @@ function App() {
       try {
         setIsChatLoading(true);
         const response = await fetch(`${API_BASE_URL}/chat/clear`, {
-          method: 'DELETE',
+          method: 'POST',
         });
         if (!response.ok) throw new Error('Failed to clear history on server');
         setMessages([]);
