@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import API_BASE_URL from '../apiConfig';
 
-const SourcesSidebar = ({ setIsLoading, uploadedDocs, setUploadedDocs, selectedDocs, setSelectedDocs, clearChatHistory }) => {
+const SourcesSidebar = ({ isLoading, setIsLoading, uploadedDocs, setUploadedDocs, selectedDocs, setSelectedDocs, clearChatHistory }) => {
     const fileInputRef = useRef(null);
 
     const fetchDocuments = async (retries = 3, delay = 1000) => {
@@ -64,13 +64,13 @@ const SourcesSidebar = ({ setIsLoading, uploadedDocs, setUploadedDocs, selectedD
 
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/documents/${docName}`, {
+            const response = await fetch(`${API_BASE_URL}/documents/${encodeURIComponent(docName)}`, {
                 method: 'DELETE',
             });
             if (!response.ok) throw new Error('Delete failed');
+            
             setSelectedDocs(prev => prev.filter(d => d !== docName));
             await fetchDocuments();
-            alert('Document removed successfully.');
         } catch (error) {
             console.error('Error deleting document:', error);
             alert('Error deleting document.');
@@ -96,6 +96,12 @@ const SourcesSidebar = ({ setIsLoading, uploadedDocs, setUploadedDocs, selectedD
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                {isLoading && (
+                    <div className="flex items-center gap-3 p-3 mb-2 bg-indigo-50/50 border border-indigo-100 rounded-xl animate-pulse">
+                        <div className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                        <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Processing...</span>
+                    </div>
+                )}
                 {uploadedDocs.length === 0 ? (
                     <div className="text-center py-10 opacity-40">
                         <p className="text-sm font-medium">No sources uploaded</p>
@@ -136,7 +142,7 @@ const SourcesSidebar = ({ setIsLoading, uploadedDocs, setUploadedDocs, selectedD
                 )}
             </div>
 
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-4">
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
                 <button
                     onClick={clearChatHistory}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all text-xs font-bold"
@@ -146,13 +152,6 @@ const SourcesSidebar = ({ setIsLoading, uploadedDocs, setUploadedDocs, selectedD
                     </svg>
                     Clear Chat History
                 </button>
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full premium-gradient flex items-center justify-center text-[10px] font-bold text-white shadow-md">U</div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-gray-700 truncate">Local User</p>
-                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Workspace</p>
-                    </div>
-                </div>
             </div>
         </div>
     );

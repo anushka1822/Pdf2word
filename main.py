@@ -23,10 +23,20 @@ from sqlalchemy.orm import sessionmaker, Session
 # Load environment variables
 load_dotenv()
 
+# Setup Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Startup Checks
+logger.info("Starting application and verifying environment variables...")
+logger.info(f"DATABASE_URL present: {'Yes' if os.environ.get('DATABASE_URL') else 'No'}")
+logger.info(f"GOOGLE_API_KEY present: {'Yes' if os.environ.get('GOOGLE_API_KEY') else 'No'}")
+logger.info(f"PINECONE_API_KEY present: {'Yes' if os.environ.get('PINECONE_API_KEY') else 'No'}")
+logger.info(f"PINECONE_INDEX_NAME: {os.environ.get('PINECONE_INDEX_NAME', 'pdf2word')}")
+
 # Database Configuration (Neon PostgreSQL)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
-    logger = logging.getLogger(__name__)
     logger.warning("DATABASE_URL not found in environment variables. Persistence will be disabled.")
     # Fallback to sqlite for local dev if needed, or just handle None
     # engine = create_engine("sqlite:///./test.db") 
@@ -73,10 +83,6 @@ def get_db():
 # Initialize FastAPI app
 app = FastAPI(title="RAG Application REST API", description="A FastAPI wrapper for a RAG architecture using Pinecone and Gemini.")
 
-# Setup Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 frontend_url_2 = os.environ.get("FRONTEND_URL_2", "http://127.0.0.1:5173")
 
@@ -100,29 +106,56 @@ async def health_check():
     return {"status": "healthy"}
 
 # Configuration Constants
-EMBEDDING_MODEL_NAME = "models/gemini-embedding-001" # Verified 3072-dim model
+EMBEDDING_MODEL_NAME = "models/gemini-embedding-001" 
 GEMINI_MODEL_NAME = "models/gemma-3-27b-it"
 PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "pdf2word")
 
-# Initialize Cloud Embeddings (Zero RAM usage on Render)
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+# Declare a global variable to cache the vectorstore
+_vectorstore = None
 
-# We use a wrapper to force 768 dimensions because Pinecone's limit is 2048
-# but the Gemini model defaults to 3072.
-class DimWrapper(GoogleGenerativeAIEmbeddings):
-    def embed_documents(self, texts):
-        # The embedding model supports flexible dimensions (MRL)
-        return super().embed_documents(texts, output_dimensionality=768)
-    def embed_query(self, text):
-        return super().embed_query(text, output_dimensionality=768)
+from google import genai as google_genai
+from langchain_core.embeddings import Embeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-embeddings = DimWrapper(model=EMBEDDING_MODEL_NAME)
+# Native dimension of gemini-embedding-001 is 3072
+EMBEDDING_DIMENSIONS = 3072
+
+class GenAIEmbeddings(Embeddings):
+    def __init__(self):
+        self.client = google_genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+        self.model = "models/gemini-embedding-001"
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        # Using native 3072 dimensions
+        res = self.client.models.embed_content(
+            model=self.model,
+            contents=texts
+        )
+        return [list(item.values) for item in res.embeddings]
+
+    def embed_query(self, text: str) -> List[float]:
+        # Using native 3072 dimensions
+        res = self.client.models.embed_content(
+            model=self.model,
+            contents=text
+        )
+        return list(res.embeddings[0].values)
+
+    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
+        return self.embed_documents(texts)
+
+    async def aembed_query(self, text: str) -> List[float]:
+        return self.embed_query(text)
+
+embeddings = GenAIEmbeddings()
+
+# STARTUP TEST - confirms actual output dimension
+print("--- RUNNING DIMENSION TEST ---", flush=True)
+_test_vecs = embeddings.embed_documents(["test1", "test2"])
+print(f"--- DIMENSION TEST: Got {len(_test_vecs[0])} dims (target: {EMBEDDING_DIMENSIONS}) ---", flush=True)
 
 # Initialize LLM
 llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL_NAME, temperature=0.3)
-
-# Declare a global variable to cache the vectorstore
-_vectorstore = None
 
 def get_vectorstore():
     global _vectorstore
@@ -184,7 +217,12 @@ async def delete_document(filename: str, db: Session = Depends(get_db)):
                 
         return {"status": "success", "message": f"Deleted {filename} and its associated vector data."}
             
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Error deleting document: {error_details}")
         raise HTTPException(status_code=500, detail=f"Error deleting document: {str(e)}")
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -225,10 +263,15 @@ async def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)
                 logger.warning(f"Could not clear existing vectors for {file.filename}: {e}")
 
             # Add metadata to identify the source file correctly for Pinecone
-            for chunk in chunks:
+            logger.info(f"Adding {len(chunks)} chunks to Pinecone for {file.filename}")
+            
+            for i, chunk in enumerate(chunks):
                 chunk.metadata["source_name"] = file.filename
+                if i == 0:
+                    logger.info(f"Sample metadata for first chunk: {chunk.metadata}")
             
             vectorstore.add_documents(chunks)
+            logger.info(f"Successfully added documents for {file.filename} to Pinecone.")
             
             # Save metadata to Postgres
             if engine:
@@ -302,23 +345,28 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db)):
         
         context = "\n\n---\n\n".join(context_parts) if context_parts else "No relevant information found in the selected documents."
         
-        # ... (prompts)
+        from langchain_core.messages import HumanMessage, AIMessage
+        
         system_prompt = (
-            "You are a helpful and polite document assistant. "
-            "Your goal is to help the user understand the provided documents. "
-            "\n\nOnly use the provided 'Retrieved Document Context' for facts."
-            "Absolutely do not use outside knowledge or hallucinate information."
+            "You are a sophisticated AI document assistant, similar in personality and capability to ChatGPT or Gemini. "
+            "Your persona is highly intelligent, conversational, and helpful. "
+            "\n\nCORE INSTRUCTIONS:"
+            "\n1. SOURCE OF TRUTH: Use the 'Retrieved Document Context' as your primary knowledge source. If the answer is in the documents, stay faithful to the facts provided."
+            "\n2. SUMMARIES & ANALYSES: When asked for summaries, don't just list facts. Provide a cohesive, well-structured, and insightful overview of the content."
+            "\n3. NATURAL CONVERSATION: Greet users warmly, acknowledge their requests, and feel free to use conversational transitions. Avoid being robotic or overly brief unless specifically asked."
+            "\n4. HANDLE GAPS GRACEFULLY: If the provided context doesn't contain a specific answer, explain what you *can* find in the documents that might be related, or offer suggestions on what the user might look for."
+            "\n5. PROFESSIONAL & POLITE: Maintain a friendly, supportive, and professional tone at all times."
         )
         
         messages = []
-        messages.append(HumanMessage(content=f"System Instructions: {system_prompt}"))
+        # Gemma 3 doesn't support SystemMessage yet, so we use HumanMessage for instructions
+        messages.append(HumanMessage(content=f"SYSTEM INSTRUCTIONS:\n{system_prompt}"))
         messages.append(HumanMessage(content=f"Retrieved Document Context:\n{context}"))
         
         for msg in request.history:
             if msg.sender == "user":
                 messages.append(HumanMessage(content=msg.text))
             else:
-                from langchain_core.messages import AIMessage
                 messages.append(AIMessage(content=msg.text))
         
         messages.append(HumanMessage(content=question))
@@ -333,7 +381,11 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
         return {"answer": answer}
  
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        logger.error(f"Error processing question: {traceback.format_exc()}")
         # Check if it's a rate limit error (often contains '429' or 'quota')
         if "429" in str(e) or "quota" in str(e).lower():
             raise HTTPException(
@@ -377,7 +429,11 @@ async def get_birdseye_view(filename: str):
         
         return {"birdseye": response.content}
         
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        logger.error(f"Error generating Bird's-Eye View: {traceback.format_exc()}")
         if "429" in str(e) or "quota" in str(e).lower():
             raise HTTPException(status_code=429, detail="AI is busy. Please try again in a moment.")
         raise HTTPException(status_code=500, detail=f"Error generating Bird's-Eye View: {str(e)}")
@@ -388,10 +444,15 @@ async def get_mindmap(filename: str):
     try:
         vectorstore = get_vectorstore()
         # Balanced retrieval for speed and substance
+        logger.info(f"Searching Pinecone for {filename} with filter...")
         results = vectorstore.similarity_search(" ", k=40, filter={"source_name": filename})
+        logger.info(f"Search returned {len(results)} results for {filename}")
         
         if not results:
-            raise HTTPException(status_code=404, detail=f"Document {filename} not found or has no content.")
+            # Try a search without filter to see if ANYTHING is in the index
+            total_results = vectorstore.similarity_search(" ", k=1)
+            logger.info(f"Diagnostic: Search without filter returned {len(total_results)} results total in index.")
+            raise HTTPException(status_code=404, detail=f"Document {filename} not found or has no content in vector store.")
             
         all_text = "\n\n".join([doc.page_content for doc in results])
         
@@ -429,7 +490,11 @@ async def get_mindmap(filename: str):
             logger.error(f"Error parsing mind map logic: {e}")
             raise HTTPException(status_code=500, detail="Failed to structure the mind map. Please try again.")
         
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        logger.error(f"Error generating Mind Map: {traceback.format_exc()}")
         if "429" in str(e) or "quota" in str(e).lower():
             raise HTTPException(status_code=429, detail="AI is busy. Please try again.")
         raise HTTPException(status_code=500, detail=f"Error generating Mind Map: {str(e)}")
@@ -449,5 +514,19 @@ async def get_chat_history(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error fetching chat history: {e}")
         return {"history": []}
+
+@app.delete("/chat/clear")
+async def delete_chat_history(db: Session = Depends(get_db)):
+    try:
+        if not engine:
+            raise HTTPException(status_code=500, detail="Database engine not initialized.")
+        
+        # Clear all messages from the database
+        db.query(DBChatMessage).delete()
+        db.commit()
+        return {"status": "success", "message": "Chat history cleared successfully."}
+    except Exception as e:
+        logger.error(f"Error clearing chat history: {e}")
+        raise HTTPException(status_code=500, detail=f"Error clearing chat history: {str(e)}")
 
 # Run the app with: uvicorn main:app --reload

@@ -79,7 +79,7 @@ const ChatArea = ({ messages, setMessages, isLoading, setIsLoading, selectedDocs
             {/* Header / Source Info */}
             <div className="px-10 py-4 flex items-center justify-between z-10">
                 <div className="flex items-center gap-3">
-                    <h2 className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em]">Blueprint</h2>
+                    <h2 className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em]">AI Studio</h2>
                     <div className="h-4 w-[1px] bg-gray-200"></div>
                     <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
                         {selectedDocs.length} {selectedDocs.length === 1 ? 'source' : 'sources'}
@@ -88,12 +88,12 @@ const ChatArea = ({ messages, setMessages, isLoading, setIsLoading, selectedDocs
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <div className="blueprint-page min-h-[calc(100%-48px)] flex flex-col">
+                <div className="document-page min-h-[calc(100%-48px)] flex flex-col">
                     <div className="p-10 pb-4">
-                        <h1 className="text-4xl font-bold text-gray-800 tracking-tight mb-2">Blueprint</h1>
+                        <h1 className="text-4xl font-bold text-gray-800 tracking-tight mb-2">Workspace</h1>
                         {selectedDocs.length > 0 && (
                             <p className="text-sm text-gray-500 font-medium italic">
-                                Context: {selectedDocs.join(', ')}
+                                Using: {selectedDocs.join(', ')}
                             </p>
                         )}
                         <div className="h-[2px] w-12 premium-gradient mt-6 rounded-full"></div>
@@ -107,7 +107,7 @@ const ChatArea = ({ messages, setMessages, isLoading, setIsLoading, selectedDocs
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                     </svg>
                                 </div>
-                                <h3 className="font-bold text-xl text-gray-800">Your AI Blueprint</h3>
+                                <h3 className="font-bold text-xl text-gray-800">Your AI Assistant</h3>
                                 <p className="text-gray-500 mt-2 max-w-sm text-sm">Your conversation and findings will be preserved here as a digital document.</p>
                             </div>
                         ) : (
@@ -115,11 +115,17 @@ const ChatArea = ({ messages, setMessages, isLoading, setIsLoading, selectedDocs
                         )}
 
                         {isLoading && (
-                            <div className="flex w-full justify-start mb-8 px-4 animate-pulse">
-                                <div className="px-6 py-4 bg-white border border-gray-100 rounded-2xl shadow-sm flex items-center gap-2">
-                                   <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"></div>
-                                   <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                                   <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                            <div className="flex w-full justify-start mb-8 px-4">
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-5 h-5 rounded-md premium-gradient flex items-center justify-center text-[10px] font-bold text-white">AI</div>
+                                        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest animate-pulse">Thinking...</span>
+                                    </div>
+                                    <div className="px-6 py-4 bg-white border border-gray-100 rounded-2xl shadow-sm flex items-center gap-2 w-fit">
+                                       <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"></div>
+                                       <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                                       <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                                    </div>
                                 </div>
                             </div>
                         )}

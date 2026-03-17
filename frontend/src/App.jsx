@@ -13,7 +13,8 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isSidebarLoading, setIsSidebarLoading] = useState(false);
   const [uploadedDocs, setUploadedDocs] = useState([]);
   const [birdseyeDoc, setBirdseyeDoc] = useState(null);
   const [mindmapDoc, setMindmapDoc] = useState(null);
@@ -45,18 +46,25 @@ function App() {
       if (validDocs.length !== selectedDocs.length) {
         setSelectedDocs(validDocs);
       }
-    } else if (uploadedDocs.length === 0 && selectedDocs.length > 0) {
-        // If server says zero docs, we clear selection too (once loaded)
-        // Only do this if we actually fetched (messages or something to indicate ready)
     }
   }, [uploadedDocs]);
 
-  const clearChatHistory = () => {
+  const clearChatHistory = async () => {
     if (window.confirm("Are you sure you want to clear the chat history?")) {
-      setMessages([]);
-      // Note: In a full app, you'd have a DELETE /chat/history endpoint too.
-      // For now, we clear the UI and local device cache.
-      localStorage.removeItem('pdf2word_messages');
+      try {
+        setIsChatLoading(true);
+        const response = await fetch(`${API_BASE_URL}/chat/clear`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to clear history on server');
+        setMessages([]);
+        localStorage.removeItem('pdf2word_messages');
+      } catch (error) {
+        console.error("Error clearing chat history:", error);
+        alert("Failed to clear chat history on server.");
+      } finally {
+        setIsChatLoading(false);
+      }
     }
   };
 
@@ -64,7 +72,8 @@ function App() {
     <div className="flex h-screen bg-[#f8f9fa] text-gray-900 font-sans overflow-hidden">
       {/* Sources - Left Column */}
       <SourcesSidebar 
-        setIsLoading={setIsLoading} 
+        isLoading={isSidebarLoading}
+        setIsLoading={setIsSidebarLoading} 
         uploadedDocs={uploadedDocs} 
         setUploadedDocs={setUploadedDocs}
         selectedDocs={selectedDocs}
@@ -72,13 +81,13 @@ function App() {
         clearChatHistory={clearChatHistory}
       />
       
-      {/* Blueprint Chat - Middle Column */}
+      {/* Studio Chat - Middle Column */}
       <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
         <ChatArea
           messages={messages}
           setMessages={setMessages}
-          isLoading={isLoading}
-          setIsLoading={setIsLoading}
+          isLoading={isChatLoading}
+          setIsLoading={setIsChatLoading}
           selectedDocs={selectedDocs}
         />
       </main>
@@ -103,15 +112,6 @@ function App() {
           docName={mindmapDoc} 
           onClose={() => setMindmapDoc(null)} 
         />
-      )}
-
-      {isLoading && (
-          <div className="fixed inset-0 bg-white/40 backdrop-blur-[2px] z-[100] flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
-                  <p className="text-sm font-bold text-gray-800 uppercase tracking-widest animate-pulse">Processing...</p>
-              </div>
-          </div>
       )}
     </div>
   );

@@ -105,7 +105,7 @@ const BirdseyeModal = ({ docName, onClose }) => {
 
                 {/* Footer */}
                 <div className="px-8 py-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Grounded AI Analysis • Synthesis Engine v2.0</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hope IT helps!</p>
                     <button 
                         onClick={onClose}
                         className="px-8 py-3 premium-gradient text-white rounded-2xl font-bold text-sm transition-all shadow-xl shadow-indigo-600/20 hover:scale-[1.05] active:scale-95"

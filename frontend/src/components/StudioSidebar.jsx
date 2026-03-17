@@ -52,7 +52,7 @@ const StudioSidebar = ({ selectedDocs, onShowBirdseye, onShowMindmap }) => {
                                     key={action.id}
                                     onClick={action.action}
                                     disabled={selectedDocs.length === 0}
-                                    className="w-full text-left p-4 blueprint-card group relative"
+                                    className="w-full text-left p-4 content-card group relative"
                                 >
                                     <div className="flex items-start gap-4">
                                         <div className={`p-2.5 rounded-xl ${action.color} group-hover:scale-110 transition-transform duration-300`}>
@@ -83,15 +83,6 @@ const StudioSidebar = ({ selectedDocs, onShowBirdseye, onShowMindmap }) => {
                 )}
             </div>
 
-            <div className="p-4 bg-gray-50/30">
-                <div className="premium-gradient p-4 rounded-2xl text-white shadow-lg shadow-indigo-200">
-                    <h4 className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Status</h4>
-                    <p className="text-sm font-bold">Workspace Ready</p>
-                    <div className="w-full bg-white/20 h-1 rounded-full mt-3 overflow-hidden">
-                        <div className="bg-white h-full w-[100%] rounded-full shadow-[0_0_8px_white]"></div>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };

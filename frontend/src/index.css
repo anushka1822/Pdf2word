@@ -36,7 +36,7 @@
     @apply border-gray-200/60 transition-colors duration-300;
   }
 
-  .blueprint-card {
+  .content-card {
     @apply bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300;
   }
 
@@ -65,8 +65,8 @@
   }
 }
 
-/* Blueprint Page Aesthetic */
-.blueprint-page {
+/* Document Page Aesthetic */
+.document-page {
   @apply max-w-4xl w-full mx-auto my-6 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.24)] rounded-xl flex flex-col overflow-hidden border border-gray-200;
 }
 
