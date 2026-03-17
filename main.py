@@ -204,20 +204,24 @@ async def get_documents(db: Session = Depends(get_db)):
 @app.post("/documents/delete/{filename}")
 async def delete_document(filename: str, db: Session = Depends(get_db)):
     try:
-        logger.info(f"POST request received to delete document: {filename}")
+        logger.info(f"--- DELETE DOCUMENT TRIGGERED --- Filename: {filename}")
         vectorstore = get_vectorstore()
+        
         # Pinecone allows deletion by metadata filter
+        logger.info(f"Attempting to delete from Pinecone: {filename}")
         vectorstore.delete(filter={"source_name": filename})
+        logger.info(f"Pinecone deletion call finished for {filename}")
         
         # Delete from Postgres
         if engine:
+            logger.info(f"Attempting to delete from DB: {filename}")
             db_doc = db.query(DBDocument).filter(DBDocument.name == filename).first()
             if db_doc:
                 db.delete(db_doc)
                 db.commit()
-                logger.info(f"Successfully deleted {filename} from DB and Pinecone.")
+                logger.info(f"Successfully deleted {filename} from DB.")
             else:
-                logger.warning(f"Document {filename} not found in DB.")
+                logger.warning(f"Document {filename} not found in DB, but continuing.")
                 
         return {"status": "success", "message": f"Deleted {filename} and its associated vector data."}
             
@@ -522,17 +526,19 @@ async def get_chat_history(db: Session = Depends(get_db)):
 @app.post("/chat/clear")
 async def delete_chat_history(db: Session = Depends(get_db)):
     try:
-        logger.info("POST request received to clear chat history.")
+        logger.info("--- CLEAR CHAT HISTORY TRIGGERED ---")
         if not engine:
+            logger.error("Database engine not initialized during clear request.")
             raise HTTPException(status_code=500, detail="Database engine not initialized.")
         
         # Clear all messages from the database
-        db.query(DBChatMessage).delete()
+        logger.info("Deleteting all messages from DBChatMessage table...")
+        rows_deleted = db.query(DBChatMessage).delete()
         db.commit()
-        logger.info("Chat history cleared successfully in DB.")
-        return {"status": "success", "message": "Chat history cleared successfully."}
+        logger.info(f"Successfully cleared {rows_deleted} messages from DB.")
+        return {"status": "success", "message": f"Chat history cleared successfully ({rows_deleted} messages removed)."}
     except Exception as e:
-        logger.error(f"Error clearing chat history: {e}")
+        logger.error(f"Error clearing chat history: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error clearing chat history: {str(e)}")
 
 # Run the app with: uvicorn main:app --reload

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import API_BASE_URL from '../apiConfig';
 
-const Sidebar = ({ setIsLoading, uploadedDocs, setUploadedDocs, selectedDocs, setSelectedDocs, clearChatHistory, onShowBirdseye, onShowMindmap }) => {
+const Sidebar = ({ setIsLoading, uploadedDocs, setUploadedDocs, selectedDocs, setSelectedDocs, clearChatHistory, onShowBirdseye, onShowMindmap, showToast, openConfirm }) => {
     const fileInputRef = useRef(null);
 
     const fetchDocuments = async (retries = 3, delay = 1000) => {
@@ -44,12 +44,12 @@ const Sidebar = ({ setIsLoading, uploadedDocs, setUploadedDocs, selectedDocs, se
 
             const data = await response.json();
             console.log('Upload success:', data);
-            alert('File uploaded and processed successfully!');
+            showToast('File uploaded and processed successfully!', 'success');
             fetchDocuments(); // Refresh list
 
         } catch (error) {
             console.error('Error uploading file:', error);
-            alert('Error uploading file. Please try again.');
+            showToast('Error uploading file. Please try again.', 'error');
         } finally {
             setIsLoading(false);
             if (fileInputRef.current) {
@@ -68,25 +68,29 @@ const Sidebar = ({ setIsLoading, uploadedDocs, setUploadedDocs, selectedDocs, se
 
     const handleDelete = async (e, docName) => {
         e.stopPropagation();
-        if (!window.confirm(`Are you sure you want to remove "${docName}"?`)) return;
+        openConfirm(
+            "Remove Document?",
+            `Are you sure you want to remove "${docName}"?`,
+            async () => {
+                setIsLoading(true);
+                try {
+                    const response = await fetch(`${API_BASE_URL}/documents/delete/${encodeURIComponent(docName)}`, {
+                        method: 'POST',
+                    });
 
-        setIsLoading(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/documents/${docName}`, {
-                method: 'DELETE',
-            });
+                    if (!response.ok) throw new Error('Delete failed');
 
-            if (!response.ok) throw new Error('Delete failed');
-
-            alert('Document removed successfully.');
-            setSelectedDocs(prev => prev.filter(d => d !== docName));
-            fetchDocuments();
-        } catch (error) {
-            console.error('Error deleting document:', error);
-            alert('Failed to remove document.');
-        } finally {
-            setIsLoading(false);
-        }
+                    showToast('Document removed successfully.', 'success');
+                    setSelectedDocs(prev => prev.filter(d => d !== docName));
+                    fetchDocuments();
+                } catch (error) {
+                    console.error('Error deleting document:', error);
+                    showToast('Failed to remove document.', 'error');
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        );
     };
 
     return (

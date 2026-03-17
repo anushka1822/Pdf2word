@@ -1,15 +1,19 @@
 import React, { useRef, useEffect } from 'react';
 import API_BASE_URL from '../apiConfig';
 
-const SourcesSidebar = ({ isLoading, setIsLoading, uploadedDocs, setUploadedDocs, selectedDocs, setSelectedDocs, clearChatHistory }) => {
+const SourcesSidebar = ({ isLoading, setIsLoading, uploadedDocs, setUploadedDocs, selectedDocs, setSelectedDocs, clearChatHistory, showToast, openConfirm }) => {
     const fileInputRef = useRef(null);
 
     const fetchDocuments = async (retries = 3, delay = 1000) => {
         try {
+            console.log("Fetching documents from:", `${API_BASE_URL}/documents`);
             const response = await fetch(`${API_BASE_URL}/documents`);
+            console.log("Fetch documents response status:", response.status);
             if (!response.ok) throw new Error('Failed to fetch');
             const data = await response.json();
+            console.log("Documents fetched:", data.documents);
             setUploadedDocs(data.documents || []);
+            
         } catch (error) {
             console.error('Error fetching documents:', error);
             if (retries > 0) {
@@ -40,10 +44,10 @@ const SourcesSidebar = ({ isLoading, setIsLoading, uploadedDocs, setUploadedDocs
                 throw new Error(errorData.detail || 'Upload failed');
             }
             await fetchDocuments();
-            alert('Document uploaded and processed successfully!');
+            showToast('Document uploaded successfully!', 'success');
         } catch (error) {
             console.error('Error uploading file:', error);
-            alert(`Error uploading file: ${error.message}`);
+            showToast(`Upload failed: ${error.message}`, 'error');
         } finally {
             setIsLoading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -60,29 +64,40 @@ const SourcesSidebar = ({ isLoading, setIsLoading, uploadedDocs, setUploadedDocs
 
     const handleDelete = async (e, docName) => {
         e.stopPropagation();
-        if (!window.confirm(`Remove "${docName}"?`)) return;
-
-        setIsLoading(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/documents/delete/${encodeURIComponent(docName)}`, {
-                method: 'POST',
-            });
-            if (!response.ok) throw new Error('Delete failed');
-            
-            setSelectedDocs(prev => prev.filter(d => d !== docName));
-            await fetchDocuments();
-        } catch (error) {
-            console.error('Error deleting document:', error);
-            alert('Error deleting document.');
-        } finally {
-            setIsLoading(false);
-        }
+        openConfirm(
+            "Remove Document?",
+            `Are you sure you want to delete "${docName}"? This action will permanently remove all associated data.`,
+            async () => {
+                setIsLoading(true);
+                try {
+                    const url = `${API_BASE_URL}/documents/delete/${encodeURIComponent(docName)}`;
+                    console.log("Attempting to delete document. URL:", url);
+                    const response = await fetch(url, {
+                        method: 'POST',
+                    });
+                    console.log("Delete response status:", response.status);
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Delete failed with status ${response.status}: ${errorText}`);
+                    }
+                    
+                    setSelectedDocs(prev => prev.filter(d => d !== docName));
+                    await fetchDocuments();
+                    showToast("Document removed!", "success");
+                } catch (error) {
+                    console.error('Error deleting document:', error);
+                    showToast(`Error deleting document: ${error.message}`, "error");
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        );
     };
 
     return (
         <div className="sources-sidebar">
             <div className="p-6 pb-4 border-b border-gray-100">
-                <h2 className="text-xl font-bold text-gray-800 tracking-tight mb-4">Sources</h2>
+                <h2 className="text-xl font-bold text-gray-800 tracking-tight mb-4 text-xs">Sources (v2.1 POST)</h2>
                 <button
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all font-medium text-sm"

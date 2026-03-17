@@ -4,9 +4,14 @@ import SourcesSidebar from './components/SourcesSidebar';
 import StudioSidebar from './components/StudioSidebar';
 import BirdseyeModal from './components/BirdseyeModal';
 import MindmapModal from './components/MindmapModal';
+import Toast from './components/Toast';
+import ConfirmationModal from './components/ConfirmationModal';
 import API_BASE_URL from './apiConfig';
 
 function App() {
+  console.log("--- APP INITIALIZED: CORE VERSION 2.0 ---");
+  console.log("API BASE URL IS:", API_BASE_URL);
+  
   const [messages, setMessages] = useState([]);
   const [selectedDocs, setSelectedDocs] = useState(() => {
     const saved = localStorage.getItem('pdf2word_selectedDocs');
@@ -18,6 +23,19 @@ function App() {
   const [uploadedDocs, setUploadedDocs] = useState([]);
   const [birdseyeDoc, setBirdseyeDoc] = useState(null);
   const [mindmapDoc, setMindmapDoc] = useState(null);
+
+  // Toast State
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'info') => setToast({ message, type });
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, onConfirm: () => {}, title: '', message: '' });
+  const openConfirm = (title, message, onConfirm) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm: () => {
+        onConfirm();
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    }});
+  };
 
   // Fetch initial history from Server
   useEffect(() => {
@@ -50,22 +68,33 @@ function App() {
   }, [uploadedDocs]);
 
   const clearChatHistory = async () => {
-    if (window.confirm("Are you sure you want to clear the chat history?")) {
-      try {
-        setIsChatLoading(true);
-        const response = await fetch(`${API_BASE_URL}/chat/clear`, {
-          method: 'POST',
-        });
-        if (!response.ok) throw new Error('Failed to clear history on server');
-        setMessages([]);
-        localStorage.removeItem('pdf2word_messages');
-      } catch (error) {
-        console.error("Error clearing chat history:", error);
-        alert("Failed to clear chat history on server.");
-      } finally {
-        setIsChatLoading(false);
-      }
-    }
+    openConfirm(
+        "Clear History?",
+        "This will permanently delete all messages in this conversation. This action cannot be undone.",
+        async () => {
+            try {
+                setIsChatLoading(true);
+                const url = `${API_BASE_URL}/chat/clear`;
+                console.log("Attempting to clear chat history. URL:", url);
+                const response = await fetch(url, {
+                    method: 'POST',
+                });
+                console.log("Clear history response status:", response.status);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to clear history on server (Status ${response.status}): ${errorText}`);
+                }
+                setMessages([]);
+                localStorage.removeItem('pdf2word_messages');
+                showToast("Chat history cleared!", "success");
+            } catch (error) {
+                console.error("Error clearing chat history:", error);
+                showToast(`Failed to clear history: ${error.message}`, "error");
+            } finally {
+                setIsChatLoading(false);
+            }
+        }
+    );
   };
 
   return (
@@ -79,6 +108,8 @@ function App() {
         selectedDocs={selectedDocs}
         setSelectedDocs={setSelectedDocs}
         clearChatHistory={clearChatHistory}
+        showToast={showToast}
+        openConfirm={openConfirm}
       />
       
       {/* Studio Chat - Middle Column */}
@@ -113,6 +144,23 @@ function App() {
           onClose={() => setMindmapDoc(null)} 
         />
       )}
+
+      {/* Global UI Components */}
+      {toast && (
+        <Toast 
+            message={toast.message} 
+            type={toast.type} 
+            onClose={() => setToast(null)} 
+        />
+      )}
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
